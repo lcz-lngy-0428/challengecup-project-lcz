@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>阳光大棚智慧能源管家</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">
+    </script>
+    <style>
+        :root {
+            --green-dark: #2E7D32;
+            --green-mid: #4CAF50;
+            --green-light: #81C784;
+            --green-pale: #C8E6C9;
+            --bg: #f2f7f2;
+            --card: #ffffff;
+            --text: #1b3a1b;
+            --text-secondary: #5a7a5a;
+            --radius: 14px;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+            --nav-height: 62px;
+            --header-height: 50px;
+            --safe-bottom: env(safe-area-inset-bottom, 8px);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 15px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+        input,
+        button {
+            font-family: inherit;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        button {
+            -webkit-user-select: none;
+            user-select: none;
+            cursor: pointer;
+            border: none;
+            outline: none;
+        }
+        input {
+            outline: none;
+            border: none;
+            font-size: 16px;
+        }
+        #authContainer {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: linear-gradient(160deg, #e8f5e9 0%, #c8e6c9 30%, #a5d6a7 70%, #81c784 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 20px;
+            transition: opacity 0.35s;
+        }
+        #authContainer.hidden { opacity: 0; pointer-events: none; }
+        .auth-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 30px 24px 24px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 8px 32px rgba(46, 125, 50, 0.18);
+            text-align: center;
+        }
+        .auth-logo { font-size: 48px; margin-bottom: 6px; }
+        .auth-title { font-size: 22px; font-weight: 700; color: var(--green-dark); margin-bottom: 4px; }
+        .auth-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 22px; }
+        .auth-input-group { margin-bottom: 14px; text-align: left; }
+        .auth-input-group label { font-size: 13px; font-weight: 600; color: #3d5a3d; display: block; margin-bottom: 4px; }
+        .auth-input-group input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 2px solid #dcedc8;
+            background: #f9fdf9;
+            font-size: 16px;
+            transition: border 0.2s;
+        }
+        .auth-input-group input:focus { border-color: var(--green-mid); background: #fff; }
+        .auth-btn {
+            width: 100%;
+            padding: 13px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            background: var(--green-mid);
+            margin-top: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.35);
+        }
+        .auth-btn:active { background: var(--green-dark); transform: scale(0.97); }
+        .auth-switch { margin-top: 14px; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+        .auth-switch span { color: var(--green-mid); font-weight: 700; text-decoration: underline; cursor: pointer; }
+        .auth-error { color: #d32f2f; font-size: 12px; margin-top: 2px; min-height: 16px; text-align: left; }
+        #appContainer {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            transition: opacity 0.35s;
+            opacity: 0;
+            pointer-events: none;
+        }
+        #appContainer.visible { opacity: 1; pointer-events: auto; }
+        .app-header {
+            height: var(--header-height);
+            background: linear-gradient(135deg, #2E7D32, #388E3C);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 17px;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        }
+        .app-header .gh-selector {
+            position: absolute;
+            right: 12px;
+            display: flex;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 3px 4px;
+        }
+        .gh-chip {
+            width: 30px;
+            height: 28px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            background: transparent;
+            transition: all 0.2s;
+        }
+        .gh-chip.active { background: #fff; color: #2E7D32; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18); }
+        .app-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding: 10px 12px 20px;
+        }
+        .app-content::-webkit-scrollbar { width: 0; height: 0; }
+        .bottom-nav {
+            height: var(--nav-height);
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            flex-shrink: 0;
+            border-top: 1px solid #e0e8e0;
+            padding-bottom: var(--safe-bottom);
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
+            z-index: 10;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            font-size: 11px;
+            color: #9aab9a;
+            padding: 6px 14px;
+            border-radius: 10px;
+            transition: all 0.2s;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .nav-item.active { color: #2E7D32; font-weight: 700; }
+        .nav-item .nav-icon { font-size: 22px; line-height: 1; }
+        .page { display: none; animation: fadeSlideIn 0.28s ease; }
+        .page.active { display: block; }
+        @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+        .card-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .card-title { font-size: 14px; font-weight: 700; color: var(--green-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .temp-display { font-size: 56px; font-weight: 900; text-align: center; color: #e65100; line-height: 1; transition: color 0.5s; }
+        .temp-display.heating { color: #d84315; }
+        .temp-display.cooling { color: #1565C0; }
+        .temp-unit { font-size: 20px; font-weight: 600; color: #666; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+        .badge-on { background: #fff3e0; color: #e65100; }
+        .badge-off { background: #e8f5e9; color: #2E7D32; }
+        .btn {
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            border: none;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-green { background: var(--green-mid); color: #fff; box-shadow: 0 3px 10px rgba(76, 175, 80, 0.3); }
+        .btn-outline { background: #fff; color: var(--green-dark); border: 2px solid var(--green-mid); }
+        .btn-danger { background: #fff; color: #c62828; border: 2px solid #ef5350; }
+        .btn:disabled { opacity: 0.45; pointer-events: none; }
+        .slider-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 13px; font-weight: 500; flex-wrap: wrap; }
+        .slider-row input[type="range"] { flex: 1; min-width: 80px; accent-color: #4CAF50; height: 6px; }
+        .slider-val { font-weight: 700; color: var(--green-dark); min-width: 44px; text-align: center; background: #f1f8e9; border-radius: 8px; padding: 3px 8px; font-size: 13px; }
+        .mode-btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+        .mode-btn {
+            padding: 8px 14px;
+            border-radius: 18px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #f5f5f5;
+            color: #666;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+        .mode-btn.active { background: #e8f5e9; color: #2E7D32; border-color: #4CAF50; font-weight: 700; }
+        .market-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f4f0; font-size: 13px; }
+        .market-item:last-child { border-bottom: none; }
+        .market-price { font-weight: 700; font-size: 14px; color: #e65100; transition: color 0.4s; }
+        .market-price.up { color: #c62828; }
+        .market-price.down { color: #2E7D32; }
+        #chartContainer {
+            width: 100%;
+            height: 340px;
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: #fff;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+        #chartContainer .chart-inner { width: 100%; height: 100%; }
+        .chart-error-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            color: #999;
+            pointer-events: none;
+            border-radius: var(--radius);
+        }
+        .profit-highlight { font-size: 28px; font-weight: 900; color: #2E7D32; }
+        .withdraw-input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 2px solid #dcedc8;
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            background: #f9fdf9;
+        }
+        .withdraw-input:focus { border-color: #4CAF50; background: #fff; }
+        .info-tag { display: inline-block; background: #fff9e6; color: #e65100; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+        .weather-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .weather-temp { font-size: 36px; font-weight: 900; color: #2E7D32; line-height: 1; }
+        .weather-detail { font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 2px; }
+        .weather-icon { font-size: 42px; line-height: 1; }
+        .report-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .report-stat-row .stat-label { flex-shrink: 0; }
+        .report-stat-row .stat-value { margin-left: auto; text-align: right; }
+        @media (max-width: 360px) {
+            .temp-display { font-size: 44px; }
+            .card { padding: 12px; }
+            .btn { padding: 8px 14px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="authContainer">
+        <div class="auth-card" id="authCard">
+            <div class="auth-logo">🌱</div>
+            <div class="auth-title">阳光大棚</div>
+            <div class="auth-subtitle">智慧能源管家</div>
+            <div id="authFormLogin">
+                <div class="auth-input-group"><label>手机号</label><input type="tel" id="loginPhone" placeholder="请输入手机号" maxlength="11"></div>
+                <div class="auth-input-group"><label>密码</label><input type="password" id="loginPwd" placeholder="请输入密码" maxlength="20"></div>
+                <div class="auth-error" id="loginError"></div>
+                <button class="auth-btn" onclick="handleLogin()">登 录</button>
+                <div class="auth-switch">还没有账号？<span onclick="showRegister()">立即注册</span></div>
+            </div>
+            <div id="authFormRegister" style="display:none;">
+                <div class="auth-input-group"><label>手机号</label><input type="tel" id="regPhone" placeholder="请输入手机号" maxlength="11"></div>
+                <div class="auth-input-group"><label>密码</label><input type="password" id="regPwd" placeholder="请设置密码(6-20位)" maxlength="20"></div>
+                <div class="auth-input-group"><label>确认密码</label><input type="password" id="regPwd2" placeholder="请再次输入密码" maxlength="20"></div>
+                <div class="auth-error" id="regError"></div>
+                <button class="auth-btn" onclick="handleRegister()">注 册</button>
+                <div class="auth-switch">已有账号？<span onclick="showLogin()">返回登录</span></div>
+            </div>
+        </div>
+    </div>
+    <div id="appContainer">
+        <div class="app-header">
+            🌿 阳光大棚智慧能源管家
+            <div class="gh-selector" id="ghSelector">
+                <button class="gh-chip active" data-gh="1">1号</button>
+                <button class="gh-chip" data-gh="2">2号</button>
+                <button class="gh-chip" data-gh="3">3号</button>
+                <button class="gh-chip" data-gh="4">4号</button>
+            </div>
+        </div>
+        <div class="app-content" id="appContent">
+            <div class="page active" id="pageHome">
+                <div class="card" id="weatherCard">
+                    <div class="card-title">🌤️ 铁岭实时天气</div>
+                    <div class="weather-row">
+                        <span class="weather-icon" id="weatherIcon">☀️</span>
+                        <span class="weather-temp" id="weatherTemp">--°C</span>
+                        <div class="weather-detail">
+                            <span id="weatherDesc">--</span>
+                            <span id="weatherHumidity">湿度 --%</span>
+                            <span id="weatherWind">风力 --</span>
+                        </div>
+                    </div>
+                    <div style="font-size:10px;color:#999;margin-top:4px;" id="weatherUpdate">数据更新中...</div>
+                </div>
+                <div class="card text-center">
+                    <div class="card-title">🌡️ 棚内实时温度</div>
+                    <div class="temp-display" id="tempDisplay">22.0<span class="temp-unit">°C</span></div>
+                    <div style="font-size:12px;color:#888;margin-top:2px;" id="tempStatus">--</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">🔥 空气能热泵</div>
+                    <div class="card-row gap-8 mb-8">
+                        <span>状态：</span>
+                        <span class="badge badge-off" id="hpStatusBadge">关闭</span>
+                        <span style="margin-left:auto;">功率：</span>
+                        <span style="font-weight:700;color:#e65100;" id="hpPowerLabel">5.0 kW</span>
+                    </div>
+                    <div class="card-row gap-8">
+                        <button class="btn btn-green" id="btnHpOn" onclick="toggleHeatPump(true)">🔛 开启热泵</button>
+                        <button class="btn btn-danger" id="btnHpOff" onclick="toggleHeatPump(false)" style="background:#fff;color:#c62828;border:2px solid #ef5350;">🔒 关闭热泵</button>
+                    </div>
+                    <div class="slider-row mt-12">
+                        <span>⚡功率设定：</span>
+                        <input type="range" min="2" max="12" step="0.5" value="5" id="hpPowerSlider" oninput="onHpPowerChange()">
+                        <span class="slider-val" id="hpPowerSliderVal">5.0 kW</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">⚙️ 运行模式</div>
+                    <div class="mode-btn-group mb-8" id="modeBtnGroup">
+                        <button class="mode-btn" data-mode="manual" onclick="setMode('manual')">🖐 手动模式</button>
+                        <button class="mode-btn" data-mode="semi-auto" onclick="setMode('semi-auto')">🤖 半自动模式</button>
+                        <button class="mode-btn" data-mode="full-auto" onclick="setMode('full-auto')">🔐 全自动模式</button>
+                    </div>
+                    <div class="card-title mt-8">🌡️ 温度阈值设置</div>
+                    <div class="slider-row">
+                        <span>开启温度：</span>
+                        <input type="range" min="10" max="35" step="0.5" value="22" id="thresholdOn" oninput="onThresholdChange()">
+                        <span class="slider-val" id="thresholdOnVal">22.0°C</span>
+                    </div>
+                    <div class="slider-row">
+                        <span>关闭温度：</span>
+                        <input type="range" min="12" max="38" step="0.5" value="27" id="thresholdOff" oninput="onThresholdChange()">
+                        <span class="slider-val" id="thresholdOffVal">27.0°C</span>
+                    </div>
+                    <div style="font-size:11px;color:#999;margin-top:4px;">💡 全自动模式锁定手动开关</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">📊 实时能源行情 <span class="info-tag" id="marketUpdateTime">30秒后更新</span></div>
+                    <div class="market-item"><span>🔌 国网电价</span><span class="market-price" id="gridPrice">0.52 元/kWh</span></div>
+                    <div class="market-item"><span>🌿 绿电交易价</span><span class="market-price" id="greenPrice">0.61 元/kWh</span></div>
+                    <div class="market-item"><span>🌍 CCER碳价</span><span class="market-price" id="ccerPrice">78.5 元/吨</span></div>
+                </div>
+            </div>
+            <div class="page" id="pageReport">
+                <div class="card" style="padding:8px;">
+                    <div class="card-title">📈 实时运行曲线</div>
+                    <div id="chartContainer"><div class="chart-inner" id="chartInner"></div></div>
+                    <div style="display:flex;justify-content:space-around;flex-wrap:wrap;gap:4px;margin-top:8px;font-size:11px;color:#666;">
+                        <span>🟠 棚内温度(°C)</span><span>🟡 光伏发电(kW)</span><span>🔵 热泵功率(kW)</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">💰 收益统计 <span style="font-size:11px;color:#888;font-weight:400;">(当前大棚发电量)</span></div>
+                    <div class="report-stat-row">
+                        <span class="stat-label">☀️ 当前光伏功率</span>
+                        <span class="stat-value" style="font-weight:700;color:#f0a030;" id="pvPowerLabel">3.2 kW</span>
+                    </div>
+                    <div class="report-stat-row">
+                        <span class="stat-label">📅 本棚今日发电量</span>
+                        <span class="stat-value" style="font-weight:700;" id="todayGen">0.00 kWh</span>
+                    </div>
+                    <div class="report-stat-row" style="margin-bottom:0;">
+                        <span class="stat-label">💎 农场今日总收益</span>
+                        <span class="stat-value profit-highlight" id="todayProfit">¥0.00</span>
+                    </div>
+                </div>
+            </div>
+            <div class="page" id="pageMine">
+                <div class="card text-center">
+                    <div style="font-size:42px;">👤</div>
+                    <div style="font-weight:700;font-size:16px;" id="minePhone">--</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">💼 资产总览</div>
+                    <div class="report-stat-row">
+                        <span class="stat-label">🏆 累计总收益</span>
+                        <span class="stat-value" style="font-weight:700;color:#2E7D32;font-size:18px;" id="mineTotalEarnings">¥0.00</span>
+                    </div>
+                    <div class="report-stat-row">
+                        <span class="stat-label">💳 未提现余额</span>
+                        <span class="stat-value" style="font-weight:700;color:#e65100;font-size:16px;" id="mineUnwithdrawn">¥0.00</span>
+                    </div>
+                    <div class="report-stat-row" style="margin-bottom:0;">
+                        <span class="stat-label">✅ 已提现总额</span>
+                        <span class="stat-value" style="font-weight:700;color:#1565C0;" id="mineWithdrawn">¥0.00</span>
+                    </div>
+                </div>
+                <button class="btn btn-green" style="width:100%;padding:14px;font-size:15px;border-radius:var(--radius);" onclick="openWithdraw()">💸 立即提现</button>
+                <button class="btn btn-outline" style="width:100%;padding:12px;margin-top:8px;border-radius:var(--radius);" onclick="handleLogout()">🚪 退出登录</button>
+            </div>
+            <div class="page" id="pageWithdraw">
+                <div class="card">
+                    <div class="card-title">💸 提现申请</div>
+                    <div class="report-stat-row">
+                        <span class="stat-label">可提现金额</span>
+                        <span class="stat-value" style="font-weight:700;font-size:18px;color:#e65100;" id="wdAvailable">¥0.00</span>
+                    </div>
+                    <div class="report-stat-row">
+                        <span class="stat-label">手续费率</span>
+                        <span class="stat-value" style="font-weight:700;">2% (平台运维)</span>
+                    </div>
+                    <input type="number" class="withdraw-input mt-8" id="wdAmount" placeholder="输入提现金额" oninput="calcWithdraw()" step="0.01" min="0">
+                    <div class="report-stat-row mt-8">
+                        <span class="stat-label">手续费</span>
+                        <span class="stat-value" style="font-weight:700;color:#c62828;" id="wdFee">¥0.00</span>
+                    </div>
+                    <div class="report-stat-row mt-8">
+                        <span class="stat-label">实际到账</span>
+                        <span class="stat-value" style="font-weight:700;color:#2E7D32;font-size:18px;" id="wdActual">¥0.00</span>
+                    </div>
+                    <button class="btn btn-green" style="width:100%;margin-top:14px;padding:13px;font-size:15px;border-radius:var(--radius);" onclick="confirmWithdraw()">✅ 确认提现</button>
+                    <button class="btn btn-outline" style="width:100%;margin-top:6px;padding:10px;border-radius:var(--radius);" onclick="closeWithdraw()">↩ 返回</button>
+                </div>
+            </div>
+        </div>
+        <div class="bottom-nav" id="bottomNav">
+            <div class="nav-item active" data-page="pageHome" onclick="switchPage('pageHome')"><span class="nav-icon">🏠</span>首页</div>
+            <div class="nav-item" data-page="pageReport" onclick="switchPage('pageReport')"><span class="nav-icon">📊</span>数据报表</div>
+            <div class="nav-item" data-page="pageMine" onclick="switchPage('pageMine')"><span class="nav-icon">👤</span>我的</div>
+        </div>
+    </div>
+<script>
+(function() {
+    const STORAGE_KEY = 'greenhouse_multiuser_db';
+    const $ = s => document.querySelector(s);
+    const $$ = s => document.querySelectorAll(s);
+
+    // 当前登录用户手机号
+    let currentUserPhone = '';
+    // 当前用户数据（运行时）
+    let userData = {
+        balance: { totalEarnings: 0, unWithdrawn: 0, withdrawn: 0, todayProfit: 0 },
+        greenhouses: {},
+        marketPrices: { gridPrice: 0.52, greenPrice: 0.61, ccerPrice: 78.5, lastUpdate: Date.now() },
+        weather: { temp: null, desc: '晴', humidity: 55, wind: '东北风 3级', icon: '☀️', lastFetch: 0 },
+        currentGH: 1
+    };
+
+    function defaultGHData(ghNum) {
+        const baseTemps = {1:22.0,2:20.5,3:24.0,4:19.0};
+        const basePV = {1:3.2,2:2.8,3:4.1,4:3.5};
+        return {
+            mode: 'manual',
+            temp: baseTemps[ghNum] || 22.0,
+            hpOn: false,
+            hpPower: 5.0,
+            thOn: 22.0,
+            thOff: 27.0,
+            pvPower: basePV[ghNum] || 3.0,
+            todayGen: 0,
+            chartSeries: { temp: [], pv: [], hp: [], timestamps: [] }
+        };
+    }
+
+    function initUserData() {
+        userData = {
+            balance: { totalEarnings: 0, unWithdrawn: 0, withdrawn: 0, todayProfit: 0 },
+            greenhouses: {},
+            marketPrices: { gridPrice: 0.52, greenPrice: 0.61, ccerPrice: 78.5, lastUpdate: Date.now() },
+            weather: { temp: null, desc: '晴', humidity: 55, wind: '东北风 3级', icon: '☀️', lastFetch: 0 },
+            currentGH: 1
+        };
+        for (let i=1;i<=4;i++) userData.greenhouses['gh'+i] = defaultGHData(i);
+    }
+
+    function loadAllUsers() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : {};
+        } catch(e) { return {}; }
+    }
+
+    function loadUserData(phone) {
+        const all = loadAllUsers();
+        if (all[phone]) {
+            userData = all[phone];
+            // 确保数据结构完整
+            if (!userData.greenhouses) userData.greenhouses = {};
+            for (let i=1;i<=4;i++) {
+                if (!userData.greenhouses['gh'+i]) userData.greenhouses['gh'+i] = defaultGHData(i);
+                else userData.greenhouses['gh'+i] = Object.assign(defaultGHData(i), userData.greenhouses['gh'+i]);
+                if (!userData.greenhouses['gh'+i].chartSeries?.timestamps) {
+                    userData.greenhouses['gh'+i].chartSeries = { temp:[], pv:[], hp:[], timestamps:[] };
+                }
+            }
+            if (!userData.balance) userData.balance = { totalEarnings:0, unWithdrawn:0, withdrawn:0, todayProfit:0 };
+            if (!userData.marketPrices) userData.marketPrices = { gridPrice:0.52, greenPrice:0.61, ccerPrice:78.5, lastUpdate:Date.now() };
+            if (!userData.weather) userData.weather = { temp:null, desc:'晴', humidity:55, wind:'东北风 3级', icon:'☀️', lastFetch:0 };
+            if (!userData.currentGH) userData.currentGH = 1;
+        } else {
+            initUserData();
+        }
+        currentUserPhone = phone;
+    }
+
+    function saveUserData() {
+        if (!currentUserPhone) return;
+        const all = loadAllUsers();
+        all[currentUserPhone] = userData;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    }
+
+    function getCurrentGHData() {
+        const key = 'gh' + (userData.currentGH || 1);
+        return userData.greenhouses[key] || defaultGHData(userData.currentGH);
+    }
+
+    let echartsInstance = null;
+    let chartRetryTimer = null;
+    function destroyChart() {
+        if(chartRetryTimer){clearTimeout(chartRetryTimer);chartRetryTimer=null;}
+        if(echartsInstance){try{echartsInstance.dispose();}catch(e){} echartsInstance=null;}
+        const inner=$('#chartInner'); if(inner) inner.innerHTML='';
+    }
+    function initChart() {
+        destroyChart();
+        const inner = $('#chartInner');
+        if(!inner || inner.getBoundingClientRect().width<10) {
+            chartRetryTimer = setTimeout(()=>{chartRetryTimer=null;initChart();}, 500);
+            return;
+        }
+        try {
+            const overlay = $('#chartContainer')?.querySelector('.chart-error-overlay');
+            if(overlay) overlay.remove();
+            echartsInstance = echarts.init(inner);
+            const gh = getCurrentGHData();
+            echartsInstance.setOption(buildChartOption(gh.chartSeries), true);
+            const handler = () => { if(echartsInstance && !echartsInstance.isDisposed()) echartsInstance.resize(); };
+            window.addEventListener('resize', handler);
+            echartsInstance._resizeHandler = handler;
+        } catch(e) {
+            destroyChart();
+            const container = $('#chartContainer');
+            if(container && !container.querySelector('.chart-error-overlay')) {
+                const el = document.createElement('div');
+                el.className='chart-error-overlay';
+                el.textContent='图表加载中，自动恢复...';
+                container.appendChild(el);
+            }
+            chartRetryTimer = setTimeout(()=>{chartRetryTimer=null;initChart();}, 2000);
+        }
+    }
+    function buildChartOption(series) {
+        const xData = (series.timestamps||[]).slice(-120);
+        const xLabels = xData.map(ts=>{
+            const d=new Date(ts);
+            return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
+        });
+        return {
+            tooltip:{trigger:'axis'},
+            legend:{data:['棚内温度°C','光伏发电kW','热泵功率kW'],top:6,textStyle:{fontSize:11}},
+            grid:{left:42,right:48,top:36,bottom:28},
+            xAxis:{type:'category',data:xLabels,boundaryGap:false,axisLabel:{fontSize:9,rotate:30,interval:Math.max(Math.floor(xLabels.length/6),1)}},
+            yAxis:[
+                {type:'value',name:'°C',position:'left',axisLabel:{fontSize:10},splitLine:{lineStyle:{type:'dashed',color:'#e0e0e0'}}},
+                {type:'value',name:'kW',position:'right',axisLabel:{fontSize:10},splitLine:{show:false},min:0}
+            ],
+            series:[
+                {name:'棚内温度°C',type:'line',data:(series.temp||[]).slice(-120),yAxisIndex:0,smooth:true,symbol:'none',lineStyle:{color:'#ff6d3a',width:2.2},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(255,109,58,0.2)'},{offset:1,color:'rgba(255,109,58,0.0)'}])}},
+                {name:'光伏发电kW',type:'line',data:(series.pv||[]).slice(-120),yAxisIndex:1,smooth:true,symbol:'none',lineStyle:{color:'#f0a030',width:2},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(240,160,48,0.18)'},{offset:1,color:'rgba(240,160,48,0.0)'}])}},
+                {name:'热泵功率kW',type:'line',data:(series.hp||[]).slice(-120),yAxisIndex:1,smooth:true,symbol:'none',lineStyle:{color:'#2196F3',width:2.2},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(33,150,243,0.15)'},{offset:1,color:'rgba(33,150,243,0.0)'}])}}
+            ]
+        };
+    }
+    function updateChartData() {
+        const gh = getCurrentGHData();
+        const series = gh.chartSeries;
+        series.timestamps.push(Date.now());
+        series.temp.push(gh.temp);
+        series.pv.push(gh.pvPower);
+        series.hp.push(gh.hpOn?gh.hpPower:0);
+        if(series.timestamps.length>200){['timestamps','temp','pv','hp'].forEach(k=>series[k]=series[k].slice(-200));}
+        if(echartsInstance && !echartsInstance.isDisposed() && $('#chartInner')?.getBoundingClientRect().width>10){
+            try{echartsInstance.setOption(buildChartOption(series), true);}catch(e){destroyChart();initChart();}
+        }
+    }
+    function simulateAllGreenhouses() {
+        const now = new Date();
+        const hour = now.getHours() + now.getMinutes()/60;
+        let solarFactor = 0;
+        if(hour>=6 && hour<=18) solarFactor = Math.sin(((hour-6)/12)*Math.PI);
+        const price = userData.marketPrices.greenPrice;
+        let totalEnergyInc = 0;
+        for(let i=1;i<=4;i++){
+            const gh = userData.greenhouses['gh'+i];
+            if(!gh) continue;
+            let newTemp = gh.temp;
+            if(gh.hpOn){
+                const rate=0.03+(gh.hpPower/12)*0.20;
+                newTemp += rate + (Math.random()-0.5)*0.04;
+                if(newTemp > gh.thOff+2) newTemp = gh.thOff+2;
+            } else {
+                newTemp -= 0.04 + Math.random()*0.05;
+                if(newTemp < gh.thOn-3) newTemp = gh.thOn-3;
+            }
+            if(gh.mode==='full-auto' || gh.mode==='semi-auto'){
+                if(newTemp <= gh.thOn && !gh.hpOn) gh.hpOn = true;
+                else if(newTemp >= gh.thOff && gh.hpOn) gh.hpOn = false;
+            }
+            if(gh.mode==='full-auto'){
+                if(newTemp <= gh.thOn) gh.hpOn = true;
+                if(newTemp >= gh.thOff) gh.hpOn = false;
+            }
+            gh.temp = Math.round(newTemp*10)/10;
+            const pvNoise = (Math.random()-0.5)*1.2;
+            gh.pvPower = Math.max(0.1, Math.round((solarFactor*gh.pvPower + 0.3 + pvNoise)*10)/10);
+            const energyInc = gh.pvPower * (2/3600);
+            gh.todayGen += energyInc;
+            totalEnergyInc += energyInc;
+            if(i === userData.currentGH) updateChartData();
+        }
+        const profitInc = totalEnergyInc * price;
+        userData.balance.todayProfit += profitInc;
+        userData.balance.totalEarnings += profitInc;
+        userData.balance.unWithdrawn += profitInc;
+        saveUserData();
+        refreshAllUI();
+    }
+
+    async function fetchWeather() {
+        const now = Date.now();
+        if(userData.weather.lastFetch && (now - userData.weather.lastFetch < 600000)) { refreshWeatherUI(); return; }
+        try {
+            const resp = await fetch('https://wttr.in/Tieling?format=j1');
+            if(!resp.ok) throw new Error('weather error');
+            const data = await resp.json();
+            const cur = data.current_condition[0];
+            userData.weather = {
+                temp: parseInt(cur.temp_C),
+                desc: cur.weatherDesc[0].value,
+                humidity: parseInt(cur.humidity),
+                wind: cur.winddir16Point + ' ' + cur.windspeedKmph + 'km/h',
+                icon: getWeatherIcon(cur.weatherDesc[0].value),
+                lastFetch: now
+            };
+        } catch(e) {
+            if(!userData.weather.temp) userData.weather = { temp:18, desc:'多云', humidity:60, wind:'西南风 2级', icon:'⛅', lastFetch:0 };
+        }
+        saveUserData();
+        refreshWeatherUI();
+    }
+    function getWeatherIcon(desc) {
+        const d = (desc||'').toLowerCase();
+        if(d.includes('晴')||d.includes('sunny')||d.includes('clear')) return '☀️';
+        if(d.includes('多云')||d.includes('cloud')||d.includes('partly')) return '⛅';
+        if(d.includes('阴')||d.includes('overcast')) return '☁️';
+        if(d.includes('雨')||d.includes('rain')) return '🌧️';
+        if(d.includes('雪')||d.includes('snow')) return '❄️';
+        if(d.includes('雾')||d.includes('fog')) return '🌫️';
+        return '🌤️';
+    }
+
+    let marketCountdown = 30;
+    function fluctuateMarket() {
+        const mp = userData.marketPrices;
+        const prev = {grid:mp.gridPrice, green:mp.greenPrice, ccer:mp.ccerPrice};
+        mp.gridPrice = Math.round((0.52+(Math.random()-0.5)*0.03)*100)/100;
+        mp.greenPrice = Math.round((0.61+(Math.random()-0.5)*0.03)*100)/100;
+        mp.ccerPrice = Math.round((78.5+(Math.random()-0.5)*4)*10)/10;
+        mp.lastUpdate = Date.now();
+        marketCountdown = 30;
+        mp._gridUp = mp.gridPrice > prev.grid;
+        mp._greenUp = mp.greenPrice > prev.green;
+        mp._ccerUp = mp.ccerPrice > prev.ccer;
+        saveUserData();
+        refreshMarketUI();
+    }
+
+    function refreshAllUI() {
+        refreshHomeUI();
+        refreshReportUI();
+        refreshMineUI();
+        refreshWithdrawUI();
+        refreshModeUI();
+        refreshWeatherUI();
+    }
+    function refreshHomeUI() {
+        const gh = getCurrentGHData();
+        const tempDisp = $('#tempDisplay'); if(tempDisp){ tempDisp.innerHTML = gh.temp.toFixed(1)+'<span class="temp-unit">°C</span>'; tempDisp.className = 'temp-display'+(gh.hpOn?' heating':' cooling'); }
+        const status = $('#tempStatus'); if(status){ status.textContent = gh.hpOn?'🔥 热泵运行中':'❄️ 热泵关闭'; status.style.color = gh.hpOn?'#d84315':'#1565C0'; }
+        const badge = $('#hpStatusBadge'); if(badge){ badge.textContent = gh.hpOn?'运行中':'关闭'; badge.className = 'badge '+(gh.hpOn?'badge-on':'badge-off'); }
+        const powerLabel = $('#hpPowerLabel'); if(powerLabel) powerLabel.textContent = gh.hpPower.toFixed(1)+' kW';
+        const slider = $('#hpPowerSlider'); if(slider) slider.value = gh.hpPower;
+        const sliderVal = $('#hpPowerSliderVal'); if(sliderVal) sliderVal.textContent = gh.hpPower.toFixed(1)+' kW';
+        const thOnInput = $('#thresholdOn'); if(thOnInput) thOnInput.value = gh.thOn;
+        const thOffInput = $('#thresholdOff'); if(thOffInput) thOffInput.value = gh.thOff;
+        const thOnVal = $('#thresholdOnVal'); if(thOnVal) thOnVal.textContent = gh.thOn.toFixed(1)+'°C';
+        const thOffVal = $('#thresholdOffVal'); if(thOffVal) thOffVal.textContent = gh.thOff.toFixed(1)+'°C';
+        const fullAuto = gh.mode === 'full-auto';
+        const btnOn = $('#btnHpOn'); if(btnOn){ btnOn.disabled = fullAuto; btnOn.style.opacity = fullAuto?'0.4':'1'; }
+        const btnOff = $('#btnHpOff'); if(btnOff){ btnOff.disabled = fullAuto; btnOff.style.opacity = fullAuto?'0.4':'1'; }
+    }
+    function refreshReportUI() {
+        const gh = getCurrentGHData();
+        const pvLabel = $('#pvPowerLabel'); if(pvLabel) pvLabel.textContent = gh.pvPower.toFixed(1)+' kW';
+        const genLabel = $('#todayGen'); if(genLabel) genLabel.textContent = gh.todayGen.toFixed(2)+' kWh';
+        const profitLabel = $('#todayProfit'); if(profitLabel) profitLabel.textContent = '¥'+userData.balance.todayProfit.toFixed(2);
+    }
+    function refreshMineUI() {
+        const phone = $('#minePhone'); if(phone) phone.textContent = currentUserPhone || '--';
+        const total = $('#mineTotalEarnings'); if(total) total.textContent = '¥'+userData.balance.totalEarnings.toFixed(2);
+        const unwith = $('#mineUnwithdrawn'); if(unwith) unwith.textContent = '¥'+userData.balance.unWithdrawn.toFixed(2);
+        const withdr = $('#mineWithdrawn'); if(withdr) withdr.textContent = '¥'+userData.balance.withdrawn.toFixed(2);
+    }
+    function refreshWithdrawUI() {
+        const avail = $('#wdAvailable'); if(avail) avail.textContent = '¥'+userData.balance.unWithdrawn.toFixed(2);
+        calcWithdraw();
+    }
+    function refreshMarketUI() {
+        const mp = userData.marketPrices;
+        const gridEl = $('#gridPrice'); if(gridEl){ gridEl.textContent = mp.gridPrice.toFixed(2)+' 元/kWh'; gridEl.className = 'market-price'+(mp._gridUp?' up':' down'); }
+        const greenEl = $('#greenPrice'); if(greenEl){ greenEl.textContent = mp.greenPrice.toFixed(2)+' 元/kWh'; greenEl.className = 'market-price'+(mp._greenUp?' up':' down'); }
+        const ccerEl = $('#ccerPrice'); if(ccerEl){ ccerEl.textContent = mp.ccerPrice.toFixed(1)+' 元/吨'; ccerEl.className = 'market-price'+(mp._ccerUp?' up':' down'); }
+        const updateEl = $('#marketUpdateTime'); if(updateEl) updateEl.textContent = marketCountdown<=0?'即将更新...':marketCountdown+'秒后更新';
+    }
+    function refreshModeUI() {
+        const gh = getCurrentGHData();
+        const buttons = document.querySelectorAll('#modeBtnGroup .mode-btn');
+        buttons.forEach(b => b.classList.toggle('active', b.dataset.mode === gh.mode));
+        const fullAuto = gh.mode==='full-auto';
+        const btnOn = $('#btnHpOn'); if(btnOn){ btnOn.disabled = fullAuto; btnOn.style.opacity = fullAuto?'0.4':'1'; }
+        const btnOff = $('#btnHpOff'); if(btnOff){ btnOff.disabled = fullAuto; btnOff.style.opacity = fullAuto?'0.4':'1'; }
+    }
+    function refreshWeatherUI() {
+        const w = userData.weather;
+        const icon = $('#weatherIcon'); if(icon) icon.textContent = w.icon || '☀️';
+        const temp = $('#weatherTemp'); if(temp) temp.textContent = w.temp!==null?w.temp+'°C':'--°C';
+        const desc = $('#weatherDesc'); if(desc) desc.textContent = w.desc || '--';
+        const hum = $('#weatherHumidity'); if(hum) hum.textContent = '湿度 '+(w.humidity||'--')+'%';
+        const wind = $('#weatherWind'); if(wind) wind.textContent = '风力 '+(w.wind||'--');
+        const update = $('#weatherUpdate'); if(update){ const min = w.lastFetch?Math.floor((Date.now()-w.lastFetch)/60000):null; update.textContent = min===null?'数据更新中...':(min<1?'刚刚更新':min+'分钟前更新'); }
+    }
+
+    function switchPage(name) {
+        $$('.page').forEach(p=>p.classList.remove('active'));
+        const target = $('#'+name); if(target) target.classList.add('active');
+        $$('#bottomNav .nav-item').forEach(n=>n.classList.toggle('active', n.dataset.page===name));
+        if(name==='pageReport') setTimeout(()=>initChart(), 200);
+        else destroyChart();
+        if(name==='pageHome') refreshHomeUI();
+        if(name==='pageMine') refreshMineUI();
+    }
+    function openWithdraw() {
+        $('#pageMine').classList.remove('active');
+        $('#pageWithdraw').classList.add('active');
+        const amountInput = $('#wdAmount'); if(amountInput) amountInput.value = '';
+        refreshWithdrawUI();
+        $$('#bottomNav .nav-item').forEach(n=>n.classList.toggle('active', n.dataset.page==='pageMine'));
+    }
+    function closeWithdraw() {
+        $('#pageWithdraw').classList.remove('active');
+        $('#pageMine').classList.add('active');
+        refreshMineUI();
+    }
+    function calcWithdraw() {
+        const amount = parseFloat($('#wdAmount')?.value) || 0;
+        const valid = Math.min(amount, userData.balance.unWithdrawn);
+        const fee = valid * 0.02;
+        const feeEl = $('#wdFee'); if(feeEl) feeEl.textContent = '¥'+fee.toFixed(2);
+        const actualEl = $('#wdActual'); if(actualEl) actualEl.textContent = '¥'+(valid-fee).toFixed(2);
+    }
+    function confirmWithdraw() {
+        const amount = parseFloat($('#wdAmount')?.value) || 0;
+        if(amount<=0) return alert('请输入有效提现金额');
+        if(amount > userData.balance.unWithdrawn) return alert('超过可提现余额');
+        const fee = amount*0.02, actual = amount-fee;
+        if(confirm(`确认提现 ¥${amount.toFixed(2)}？\n手续费(2%): ¥${fee.toFixed(2)}\n实际到账: ¥${actual.toFixed(2)}`)){
+            userData.balance.unWithdrawn -= amount;
+            userData.balance.withdrawn += actual;
+            saveUserData();
+            refreshAllUI();
+            alert('提现成功！到账 ¥'+actual.toFixed(2));
+            closeWithdraw();
+        }
+    }
+    function switchGreenhouse(num) {
+        if(userData.currentGH === num) return;
+        userData.currentGH = num;
+        $$('#ghSelector .gh-chip').forEach(c=>c.classList.toggle('active', parseInt(c.dataset.gh)===num));
+        destroyChart();
+        refreshAllUI();
+        if($('#pageReport')?.classList.contains('active')) setTimeout(()=>initChart(), 200);
+        saveUserData();
+    }
+    function toggleHeatPump(on) {
+        const gh = getCurrentGHData();
+        if(gh.mode==='full-auto') return;
+        gh.hpOn = on;
+        saveUserData();
+        refreshAllUI();
+    }
+    function onHpPowerChange() {
+        const gh = getCurrentGHData();
+        const val = parseFloat($('#hpPowerSlider')?.value) || 5;
+        gh.hpPower = val;
+        const sliderVal = $('#hpPowerSliderVal'); if(sliderVal) sliderVal.textContent = val.toFixed(1)+' kW';
+        const powerLabel = $('#hpPowerLabel'); if(powerLabel) powerLabel.textContent = val.toFixed(1)+' kW';
+        saveUserData();
+    }
+    function onThresholdChange() {
+        const gh = getCurrentGHData();
+        let thOn = parseFloat($('#thresholdOn')?.value) || 22;
+        let thOff = parseFloat($('#thresholdOff')?.value) || 27;
+        if(thOn >= thOff) thOff = thOn+1;
+        gh.thOn = thOn; gh.thOff = thOff;
+        if($('#thresholdOn')) $('#thresholdOn').value = thOn;
+        if($('#thresholdOff')) $('#thresholdOff').value = thOff;
+        const onVal = $('#thresholdOnVal'); if(onVal) onVal.textContent = thOn.toFixed(1)+'°C';
+        const offVal = $('#thresholdOffVal'); if(offVal) offVal.textContent = thOff.toFixed(1)+'°C';
+        saveUserData();
+    }
+    function setMode(mode) {
+        const gh = getCurrentGHData(); gh.mode = mode;
+        if(mode==='full-auto') {
+            if(gh.temp <= gh.thOn) gh.hpOn = true;
+            if(gh.temp >= gh.thOff) gh.hpOn = false;
+        }
+        saveUserData();
+        refreshAllUI();
+    }
+    function showRegister() { $('#authFormLogin').style.display='none'; $('#authFormRegister').style.display='block'; }
+    function showLogin() { $('#authFormRegister').style.display='none'; $('#authFormLogin').style.display='block'; }
+    function handleLogin() {
+        const phone = $('#loginPhone').value.trim();
+        const pwd = $('#loginPwd').value.trim();
+        if(!/^1[3-9]\d{9}$/.test(phone)) return $('#loginError').textContent='请输入正确手机号';
+        if(pwd.length<6) return $('#loginError').textContent='密码至少6位';
+        const all = loadAllUsers();
+        const userRecord = all[phone];
+        if(!userRecord) return $('#loginError').textContent='该账号未注册';
+        if(userRecord._pwd !== pwd) return $('#loginError').textContent='密码错误';
+        loadUserData(phone);
+        enterApp();
+    }
+    function handleRegister() {
+        const phone = $('#regPhone').value.trim();
+        const pwd = $('#regPwd').value.trim();
+        if(!/^1[3-9]\d{9}$/.test(phone)) return $('#regError').textContent='请输入正确手机号';
+        if(pwd.length<6) return $('#regError').textContent='密码至少6位';
+        if(pwd !== $('#regPwd2').value.trim()) return $('#regError').textContent='两次密码不一致';
+        const all = loadAllUsers();
+        if(all[phone]) return $('#regError').textContent='该手机号已注册';
+        initUserData();
+        userData['_pwd'] = pwd; // 存储密码哈希(简化)
+        currentUserPhone = phone;
+        saveUserData();
+        alert('注册成功！');
+        enterApp();
+    }
+    function handleLogout() {
+        if(confirm('确定退出登录吗？')) {
+            currentUserPhone = '';
+            destroyChart();
+            $('#authContainer').classList.remove('hidden');
+            $('#appContainer').classList.remove('visible');
+            showLogin();
+        }
+    }
+    function enterApp() {
+        $('#authContainer').classList.add('hidden');
+        $('#appContainer').classList.add('visible');
+        refreshAllUI();
+        fetchWeather();
+        if($('#pageReport')?.classList.contains('active')) setTimeout(initChart, 300);
+    }
+    function exitApp() {
+        destroyChart();
+        $('#authContainer').classList.remove('hidden');
+        $('#appContainer').classList.remove('visible');
+        showLogin();
+    }
+    function init() {
+        // 启动时处于未登录状态
+        $('#appContainer').classList.remove('visible');
+        showLogin();
+        $('#ghSelector')?.addEventListener('click', e => {
+            const chip = e.target.closest('.gh-chip');
+            if(chip) switchGreenhouse(parseInt(chip.dataset.gh));
+        });
+        setInterval(() => {
+            if(currentUserPhone) {
+                simulateAllGreenhouses();
+                marketCountdown = Math.max(0, marketCountdown-2);
+                if(Date.now() - userData.marketPrices.lastUpdate >= 30000) fluctuateMarket();
+                const updateEl = $('#marketUpdateTime');
+                if(updateEl) updateEl.textContent = marketCountdown<=0?'即将更新...':marketCountdown+'秒后更新';
+            }
+        }, 2000);
+        setInterval(() => { if(currentUserPhone) fetchWeather(); }, 600000);
+        window.addEventListener('resize', () => { if(echartsInstance && !echartsInstance.isDisposed()) echartsInstance.resize(); });
+    }
+    document.addEventListener('DOMContentLoaded', init);
+
+    window.handleLogin = handleLogin;
+    window.handleRegister = handleRegister;
+    window.showRegister = showRegister;
+    window.showLogin = showLogin;
+    window.switchPage = switchPage;
+    window.toggleHeatPump = toggleHeatPump;
+    window.onHpPowerChange = onHpPowerChange;
+    window.onThresholdChange = onThresholdChange;
+    window.setMode = setMode;
+    window.openWithdraw = openWithdraw;
+    window.closeWithdraw = closeWithdraw;
+    window.calcWithdraw = calcWithdraw;
+    window.confirmWithdraw = confirmWithdraw;
+    window.handleLogout = handleLogout;
+})();
+</script>
+</body>
+</html>
